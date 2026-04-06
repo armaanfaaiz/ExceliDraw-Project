@@ -1,4 +1,3 @@
-import { initDraw } from "@/draw";
 import { useEffect, useRef, useState } from "react";
 import { IconButton } from "./IconButton";
 import { Circle, Pencil, RectangleHorizontalIcon } from "lucide-react";
@@ -22,7 +21,6 @@ export function Canvas({
     }, [selectedTool, game]);
 
     useEffect(() => {
-
         if (canvasRef.current) {
             const g = new Game(canvasRef.current, roomId, socket);
             setGame(g);
@@ -31,9 +29,7 @@ export function Canvas({
                 g.destroy();
             }
         }
-
-
-    }, [canvasRef]);
+    }, [canvasRef, roomId, socket]);
 
     return <div style={{
         height: "100vh",

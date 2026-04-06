@@ -14,10 +14,7 @@ type Shape = {
     radius: number;
 } | {
     type: "pencil";
-    startX: number;
-    startY: number;
-    endX: number;
-    endY: number;
+    points: {x: number, y: number}[];
 }
 
 export class Game {
@@ -30,6 +27,7 @@ export class Game {
     private startX = 0;
     private startY = 0;
     private selectedTool: Tool = "circle";
+    private currentPencilPoints: {x: number, y: number}[] = [];
 
     socket: WebSocket;
 
@@ -61,18 +59,41 @@ export class Game {
         this.existingShapes = await getExistingShapes(this.roomId);
         console.log(this.existingShapes);
         this.clearCanvas();
+        
+        // Wait for WebSocket to open before joining room
+        if (this.socket.readyState === WebSocket.OPEN) {
+            this.sendJoinRoom();
+        } else {
+            this.socket.onopen = () => {
+                console.log("WebSocket opened, sending join_room message");
+                this.sendJoinRoom();
+            };
+        }
+    }
+    
+    private sendJoinRoom() {
+        this.socket.send(JSON.stringify({
+            type: "join_room",
+            roomId: this.roomId
+        }));
     }
 
     initHandlers() {
         this.socket.onmessage = (event) => {
+            console.log("WebSocket message received:", event.data);
             const message = JSON.parse(event.data);
 
             if (message.type == "chat") {
+                console.log("Chat message received, adding shape");
                 const parsedShape = JSON.parse(message.message)
                 this.existingShapes.push(parsedShape.shape)
                 this.clearCanvas();
             }
         }
+        
+        this.socket.onopen = () => {
+            console.log("WebSocket opened, sending join_room message");
+        };
     }
 
     clearCanvas() {
@@ -90,6 +111,16 @@ export class Game {
                 this.ctx.arc(shape.centerX, shape.centerY, Math.abs(shape.radius), 0, Math.PI * 2);
                 this.ctx.stroke();
                 this.ctx.closePath();                
+            } else if (shape.type === "pencil") {
+                if (shape.points.length > 0) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(shape.points[0].x, shape.points[0].y);
+                    for (let i = 1; i < shape.points.length; i++) {
+                        this.ctx.lineTo(shape.points[i].x, shape.points[i].y);
+                    }
+                    this.ctx.stroke();
+                    this.ctx.closePath();
+                }
             }
         })
     }
@@ -98,6 +129,10 @@ export class Game {
         this.clicked = true
         this.startX = e.clientX
         this.startY = e.clientY
+        
+        if (this.selectedTool === "pencil") {
+            this.currentPencilPoints = [{x: e.clientX, y: e.clientY}];
+        }
     }
     mouseUpHandler = (e) => {
         this.clicked = false
@@ -123,6 +158,12 @@ export class Game {
                 centerX: this.startX + radius,
                 centerY: this.startY + radius,
             }
+        } else if (selectedTool === "pencil") {
+            shape = {
+                type: "pencil",
+                points: [...this.currentPencilPoints]
+            }
+            this.currentPencilPoints = [];
         }
 
         if (!shape) {
@@ -131,13 +172,17 @@ export class Game {
 
         this.existingShapes.push(shape);
 
-        this.socket.send(JSON.stringify({
-            type: "chat",
-            message: JSON.stringify({
-                shape
-            }),
-            roomId: this.roomId
-        }))
+        if (this.socket.readyState === WebSocket.OPEN) {
+            this.socket.send(JSON.stringify({
+                type: "chat",
+                message: JSON.stringify({
+                    shape
+                }),
+                roomId: this.roomId
+            }));
+        } else {
+            console.error("WebSocket is not open, cannot send message");
+        }
     }
     mouseMoveHandler = (e) => {
         if (this.clicked) {
@@ -157,6 +202,19 @@ export class Game {
                 this.ctx.arc(centerX, centerY, Math.abs(radius), 0, Math.PI * 2);
                 this.ctx.stroke();
                 this.ctx.closePath();                
+            } else if (selectedTool === "pencil") {
+                this.currentPencilPoints.push({x: e.clientX, y: e.clientY});
+                
+                // Draw current pencil stroke
+                if (this.currentPencilPoints.length > 0) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(this.currentPencilPoints[0].x, this.currentPencilPoints[0].y);
+                    for (let i = 1; i < this.currentPencilPoints.length; i++) {
+                        this.ctx.lineTo(this.currentPencilPoints[i].x, this.currentPencilPoints[i].y);
+                    }
+                    this.ctx.stroke();
+                    this.ctx.closePath();
+                }
             }
         }
     }

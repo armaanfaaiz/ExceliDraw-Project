@@ -1,6 +1,6 @@
 import express from "express";
 import jwt from "jsonwebtoken";
-import { JWT_SECRET } from '@repo/backend-common/config';
+import { JWT_SECRET } from '@repo/backend-common';
 import { middleware } from "./middleware";
 import { CreateUserSchema, SigninSchema, CreateRoomSchema } from "@repo/common/types";
 import { prismaClient } from "@repo/db/client";
@@ -140,4 +140,4 @@ app.get("/room/:slug", async (req, res) => {
     })
 })
 
-app.listen(3001);
+app.listen(3002);

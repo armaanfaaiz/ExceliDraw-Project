@@ -1,6 +1,6 @@
 import { WebSocket, WebSocketServer } from 'ws';
 import jwt, { JwtPayload } from "jsonwebtoken";
-import { JWT_SECRET } from '@repo/backend-common/config';
+import { JWT_SECRET } from '@repo/backend-common';
 import { prismaClient } from "@repo/db/client";
 
 const wss = new WebSocketServer({ port: 8080 });
@@ -77,23 +77,33 @@ wss.on('connection', function connection(ws, request) {
     console.log(parsedData);
 
     if (parsedData.type === "chat") {
-      const roomId = parsedData.roomId;
+      const roomSlug = parsedData.roomId;
       const message = parsedData.message;
+
+      // Find room by slug to get its ID
+      const room = await prismaClient.room.findUnique({
+        where: { slug: roomSlug }
+      });
+
+      if (!room) {
+        console.error("Room not found:", roomSlug);
+        return;
+      }
 
       await prismaClient.chat.create({
         data: {
-          roomId: Number(roomId),
+          roomId: room.id, // Use the room's numeric ID
           message,
           userId
         }
       });
 
       users.forEach(user => {
-        if (user.rooms.includes(roomId)) {
+        if (user.rooms.includes(roomSlug)) {
           user.ws.send(JSON.stringify({
             type: "chat",
             message: message,
-            roomId
+            roomId: roomSlug
           }))
         }
       })
