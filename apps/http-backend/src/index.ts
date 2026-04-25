@@ -8,7 +8,12 @@ import cors from "cors";
 
 const app = express();
 app.use(express.json());
-app.use(cors())
+
+// CORS configuration for production
+app.use(cors({
+    origin: process.env.FRONTEND_URL || "*",
+    credentials: true
+}));
 
 app.post("/signup", async (req, res) => {
 
@@ -140,4 +145,7 @@ app.get("/room/:slug", async (req, res) => {
     })
 })
 
-app.listen(3002);
+const PORT = process.env.PORT || 3002;
+app.listen(PORT, () => {
+    console.log(`HTTP Backend running on port ${PORT}`);
+});
