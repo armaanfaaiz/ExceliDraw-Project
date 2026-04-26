@@ -78,44 +78,60 @@ app.post("/signin", async (req, res) => {
 })
 
 app.post("/room", middleware, async (req, res) => {
-    const parsedData = CreateRoomSchema.safeParse(req.body);
-    if (!parsedData.success) {
-        res.json({
-            message: "Incorrect inputs"
-        })
-        return;
-    }
     // @ts-ignore: TODO: Fix this
     const userId = req.userId;
 
     try {
+        // Get the count of existing rooms for this user
+        const existingRoomsCount = await prismaClient.room.count({
+            where: {
+                adminId: userId
+            }
+        });
+
+        // Generate canvas name as canvas-{number}
+        const canvasName = `canvas-${existingRoomsCount + 1}`;
+
         const room = await prismaClient.room.create({
             data: {
-                slug: parsedData.data.name,
+                slug: canvasName,
                 adminId: userId
             }
         })
 
         res.json({
-            roomId: room.id
+            roomId: room.id,
+            roomName: canvasName
         })
     } catch(e) {
         res.status(411).json({
-            message: "Room already exists with this name"
+            message: "Failed to create room"
         })
     }
 })
 
-app.get("/chats/:roomId", async (req, res) => {
+app.get("/chats/:roomSlug", async (req, res) => {
     try {
-        const roomId = Number(req.params.roomId);
-        console.log(req.params.roomId);
+        const roomSlug = req.params.roomSlug;
+        console.log("Fetching chats for room:", roomSlug);
+
+        // Find room by slug first to get the numeric ID
+        const room = await prismaClient.room.findUnique({
+            where: { slug: roomSlug }
+        });
+
+        if (!room) {
+            console.error("Room not found:", roomSlug);
+            res.json({ messages: [] });
+            return;
+        }
+
         const messages = await prismaClient.chat.findMany({
             where: {
-                roomId: roomId
+                roomId: room.id
             },
             orderBy: {
-                id: "desc"
+                id: "asc"
             },
             take: 1000
         });
@@ -143,6 +159,30 @@ app.get("/room/:slug", async (req, res) => {
     res.json({
         room
     })
+})
+
+app.get("/my-rooms", middleware, async (req, res) => {
+    // @ts-ignore: TODO: Fix this
+    const userId = req.userId;
+
+    try {
+        const rooms = await prismaClient.room.findMany({
+            where: {
+                adminId: userId
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
+        });
+
+        res.json({
+            rooms
+        });
+    } catch(e) {
+        res.status(500).json({
+            message: "Failed to fetch rooms"
+        });
+    }
 })
 
 const PORT = process.env.PORT || 3002;

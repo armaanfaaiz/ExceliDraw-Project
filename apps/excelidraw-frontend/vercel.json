@@ -1,5 +1,0 @@
-{
-  "buildCommand": "cd ../.. && pnpm install && pnpm build --filter=excelidraw-frontend",
-  "outputDirectory": "apps/excelidraw-frontend/.next",
-  "framework": "nextjs"
-}
