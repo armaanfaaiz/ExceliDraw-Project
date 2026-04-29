@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { IconButton } from "./IconButton";
-import { Circle, Pencil, RectangleHorizontalIcon, Eraser, Download, Trash2 } from "lucide-react";
+import { Circle, Pencil, RectangleHorizontalIcon, Download, Trash2 } from "lucide-react";
 import { Game } from "@/draw/Game";
 
 export type Tool = "circle" | "rect" | "pencil";

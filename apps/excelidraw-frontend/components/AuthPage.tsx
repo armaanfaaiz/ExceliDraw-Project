@@ -60,7 +60,7 @@ export function AuthPage({isSignin}: {
             let data;
             try {
                 data = JSON.parse(responseText);
-            } catch (e) {
+            } catch (error) {
                 alert("Invalid response from server");
                 return;
             }
