@@ -27,6 +27,7 @@ export default function Room() {
     const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
     const [showShareMenu, setShowShareMenu] = useState(false);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
+    const [userCount, setUserCount] = useState(1);
     const wsRef = useRef<WebSocket | null>(null);
 
     const fetchRoom = useCallback(async (roomId: string) => {
@@ -71,6 +72,13 @@ export default function Room() {
             ws.onopen = () => {
                 setConnectionStatus('connected');
                 setSocket(ws);
+            };
+            
+            ws.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                if (message.type === 'user_count') {
+                    setUserCount(message.count);
+                }
             };
             
             ws.onerror = () => {
@@ -200,7 +208,7 @@ export default function Room() {
                         {/* Users Count */}
                         <div className="flex items-center gap-2 px-3 py-2 bg-slate-800 text-slate-300 rounded-lg">
                             <Users className="w-4 h-4" />
-                            <span className="text-sm">1</span>
+                            <span className="text-sm">{userCount}</span>
                         </div>
 
                         {/* Profile Button */}
