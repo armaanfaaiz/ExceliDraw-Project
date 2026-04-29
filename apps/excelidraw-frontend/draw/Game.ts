@@ -125,7 +125,7 @@ export class Game {
         })
     }
 
-    mouseDownHandler = (e) => {
+    mouseDownHandler = (e: MouseEvent) => {
         this.clicked = true
         this.startX = e.clientX
         this.startY = e.clientY
@@ -134,7 +134,7 @@ export class Game {
             this.currentPencilPoints = [{x: e.clientX, y: e.clientY}];
         }
     }
-    mouseUpHandler = (e) => {
+    mouseUpHandler = (e: MouseEvent) => {
         this.clicked = false
         const width = e.clientX - this.startX;
         const height = e.clientY - this.startY;
@@ -184,7 +184,7 @@ export class Game {
             console.error("WebSocket is not open, cannot send message");
         }
     }
-    mouseMoveHandler = (e) => {
+    mouseMoveHandler = (e: MouseEvent) => {
         if (this.clicked) {
             const width = e.clientX - this.startX;
             const height = e.clientY - this.startY;
