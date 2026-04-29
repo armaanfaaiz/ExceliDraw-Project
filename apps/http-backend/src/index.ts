@@ -10,8 +10,24 @@ const app = express();
 app.use(express.json());
 
 // CORS configuration for production
+const corsOrigin = process.env.FRONTEND_URL || "*";
 app.use(cors({
-    origin: process.env.FRONTEND_URL || "*",
+    origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, curl, etc.)
+        if (!origin) return callback(null, true);
+        
+        // Normalize URLs by removing trailing slashes for comparison
+        const normalizedOrigin = origin.replace(/\/$/, '');
+        const normalizedCorsOrigin = typeof corsOrigin === 'string' 
+            ? corsOrigin.replace(/\/$/, '') 
+            : corsOrigin;
+        
+        if (corsOrigin === "*" || normalizedOrigin === normalizedCorsOrigin) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true
 }));
 
