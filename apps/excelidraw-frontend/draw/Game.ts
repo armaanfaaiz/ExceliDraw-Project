@@ -78,16 +78,6 @@ export class Game {
         this.existingShapes = await getExistingShapes(this.roomId);
         console.log(this.existingShapes);
         this.clearCanvas();
-        
-        // Wait for WebSocket to open before joining room
-        if (this.socket.readyState === WebSocket.OPEN) {
-            this.sendJoinRoom();
-        } else {
-            this.socket.onopen = () => {
-                console.log("WebSocket opened, sending join_room message");
-                this.sendJoinRoom();
-            };
-        }
     }
     
     private sendJoinRoom() {
@@ -98,21 +88,40 @@ export class Game {
     }
 
     initHandlers() {
+        // Handle WebSocket open - join room
+        this.socket.onopen = () => {
+            console.log("WebSocket opened, sending join_room message");
+            this.sendJoinRoom();
+        };
+        
+        // Handle incoming messages
         this.socket.onmessage = (event) => {
             console.log("WebSocket message received:", event.data);
             const message = JSON.parse(event.data);
 
-            if (message.type == "chat") {
+            if (message.type === "chat") {
                 console.log("Chat message received, adding shape");
-                const parsedShape = JSON.parse(message.message)
-                this.existingShapes.push(parsedShape.shape)
-                this.clearCanvas();
+                try {
+                    const parsedData = JSON.parse(message.message);
+                    if (parsedData.shape) {
+                        this.existingShapes.push(parsedData.shape);
+                        this.clearCanvas();
+                    }
+                } catch (e) {
+                    console.error("Error parsing shape:", e);
+                }
             }
         }
         
-        this.socket.onopen = () => {
-            console.log("WebSocket opened, sending join_room message");
-        };
+        // Handle errors
+        this.socket.onerror = (error) => {
+            console.error("WebSocket error:", error);
+        }
+        
+        // Handle close
+        this.socket.onclose = () => {
+            console.log("WebSocket closed");
+        }
     }
 
     clearCanvas() {
