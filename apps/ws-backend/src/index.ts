@@ -2,10 +2,22 @@ import { WebSocket, WebSocketServer } from 'ws';
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { JWT_SECRET } from '@repo/backend-common';
 import { prismaClient } from "@repo/db/client";
+import http from 'http';
 
 const PORT = process.env.PORT || 8080;
-const wss = new WebSocketServer({ port: Number(PORT) });
-console.log(`WebSocket server running on port ${PORT}`);
+
+// Create HTTP server for Render compatibility
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('WebSocket server is running\n');
+});
+
+// Attach WebSocket server to HTTP server
+const wss = new WebSocketServer({ server });
+
+server.listen(Number(PORT), () => {
+  console.log(`WebSocket server running on port ${PORT}`);
+});
 
 interface User {
   ws: WebSocket,
