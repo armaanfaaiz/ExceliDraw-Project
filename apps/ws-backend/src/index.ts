@@ -2,36 +2,8 @@ import { WebSocket, WebSocketServer } from 'ws';
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { JWT_SECRET } from '@repo/backend-common';
 import { prismaClient } from "@repo/db/client";
-import http from 'http';
 
-const PORT = process.env.PORT || 8080;
-
-// Create HTTP server for Render compatibility
-const server = http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('WebSocket server is running\n');
-});
-
-// Attach WebSocket server to HTTP server
-const wss = new WebSocketServer({ server });
-
-server.listen(Number(PORT), () => {
-  console.log(`WebSocket server running on port ${PORT}`);
-});
-
-// Keepalive ping to prevent connection drops
-const interval = setInterval(() => {
-  wss.clients.forEach((ws) => {
-    const extWs = ws as WebSocket;
-    if (extWs.readyState === WebSocket.OPEN) {
-      extWs.ping();
-    }
-  });
-}, 30000); // Ping every 30 seconds
-
-wss.on('close', () => {
-  clearInterval(interval);
-});
+const wss = new WebSocketServer({ port: 8080 });
 
 interface User {
   ws: WebSocket,
@@ -60,24 +32,6 @@ function checkUser(token: string): string | null {
   return null;
 }
 
-// Track users per room for count
-function getRoomUserCount(roomId: string): number {
-  return users.filter(u => u.rooms.includes(roomId)).length;
-}
-
-function broadcastUserCount(roomId: string) {
-  const count = getRoomUserCount(roomId);
-  users.forEach(user => {
-    if (user.rooms.includes(roomId)) {
-      user.ws.send(JSON.stringify({
-        type: "user_count",
-        count: count,
-        roomId: roomId
-      }));
-    }
-  });
-}
-
 wss.on('connection', function connection(ws, request) {
   const url = request.url;
   if (!url) {
@@ -92,13 +46,11 @@ wss.on('connection', function connection(ws, request) {
     return null;
   }
 
-  const user = {
+  users.push({
     userId,
-    rooms: [] as string[],
+    rooms: [],
     ws
-  };
-  
-  users.push(user);
+  })
 
   ws.on('message', async function message(data) {
     let parsedData;
@@ -109,77 +61,44 @@ wss.on('connection', function connection(ws, request) {
     }
 
     if (parsedData.type === "join_room") {
-      const roomId = parsedData.roomId;
-      if (!user.rooms.includes(roomId)) {
-        user.rooms.push(roomId);
-        console.log(`User ${userId} joined room ${roomId}. Total users: ${getRoomUserCount(roomId)}`);
-        // Broadcast updated user count
-        broadcastUserCount(roomId);
-      }
+      const user = users.find(x => x.ws === ws);
+      user?.rooms.push(parsedData.roomId);
     }
 
     if (parsedData.type === "leave_room") {
-      const roomId = parsedData.room;
-      if (user.rooms.includes(roomId)) {
-        user.rooms = user.rooms.filter(x => x !== roomId);
-        console.log(`User ${userId} left room ${roomId}. Total users: ${getRoomUserCount(roomId)}`);
-        broadcastUserCount(roomId);
+      const user = users.find(x => x.ws === ws);
+      if (!user) {
+        return;
       }
+      user.rooms = user?.rooms.filter(x => x === parsedData.room);
     }
 
     console.log("message received")
     console.log(parsedData);
 
     if (parsedData.type === "chat") {
-      const roomSlug = parsedData.roomId;
+      const roomId = parsedData.roomId;
       const message = parsedData.message;
-
-      // Find room by slug to get its ID
-      const room = await prismaClient.room.findUnique({
-        where: { slug: roomSlug }
-      });
-
-      if (!room) {
-        console.error("Room not found:", roomSlug);
-        return;
-      }
 
       await prismaClient.chat.create({
         data: {
-          roomId: room.id,
+          roomId: Number(roomId),
           message,
           userId
         }
       });
 
-      users.forEach(u => {
-        if (u.rooms.includes(roomSlug)) {
-          u.ws.send(JSON.stringify({
+      users.forEach(user => {
+        if (user.rooms.includes(roomId)) {
+          user.ws.send(JSON.stringify({
             type: "chat",
             message: message,
-            roomId: roomSlug
+            roomId
           }))
         }
       })
     }
 
   });
-  
-  // Handle disconnect - remove user from all rooms and broadcast
-  ws.on('close', () => {
-    console.log(`User ${userId} disconnected`);
-    // Get all rooms this user was in
-    const roomsToUpdate = [...user.rooms];
-    // Remove user from tracking
-    const index = users.findIndex(u => u.ws === ws);
-    if (index > -1) {
-      users.splice(index, 1);
-    }
-    // Broadcast updated counts for all rooms they were in
-    roomsToUpdate.forEach(roomId => {
-      broadcastUserCount(roomId);
-    });
-  });
-
 });
 
