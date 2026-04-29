@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { HTTP_BACKEND } from "../../../config";
 import { Canvas } from "@/components/Canvas";
@@ -9,7 +9,6 @@ import {
     ArrowLeft, 
     Users, 
     Share2, 
-    MoreVertical,
     Loader2,
     Wifi,
     WifiOff,
@@ -22,12 +21,30 @@ import {
 export default function Room() {
     const params = useParams();
     const router = useRouter();
-    const [room, setRoom] = useState<any>(null);
+    const [room, setRoom] = useState<{id: number; slug: string; adminId: string; createdAt: string} | null>(null);
     const [loading, setLoading] = useState(true);
     const [socket, setSocket] = useState<WebSocket | null>(null);
     const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
     const [showShareMenu, setShowShareMenu] = useState(false);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+    const fetchRoom = useCallback(async (roomId: string) => {
+        try {
+            const response = await fetch(`${HTTP_BACKEND}/room/${roomId}`);
+            
+            if (response.ok) {
+                const data = await response.json();
+                setRoom(data.room);
+            } else {
+                alert("Room not found");
+                router.push("/dashboard");
+            }
+        } catch (error) {
+            console.error("Error fetching room:", error);
+        } finally {
+            setLoading(false);
+        }
+    }, [router]);
 
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -59,25 +76,7 @@ export default function Room() {
                 ws.close();
             };
         }
-    }, [params.id, router]);
-
-    const fetchRoom = async (roomId: string) => {
-        try {
-            const response = await fetch(`${HTTP_BACKEND}/room/${roomId}`);
-            
-            if (response.ok) {
-                const data = await response.json();
-                setRoom(data.room);
-            } else {
-                alert("Room not found");
-                router.push("/dashboard");
-            }
-        } catch (error) {
-            console.error("Error fetching room:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
+    }, [params.id, router, fetchRoom]);
 
     const copyRoomLink = () => {
         const url = window.location.href;

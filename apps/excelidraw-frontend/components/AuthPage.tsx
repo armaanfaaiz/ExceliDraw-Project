@@ -60,7 +60,7 @@ export function AuthPage({isSignin}: {
             let data;
             try {
                 data = JSON.parse(responseText);
-            } catch (error) {
+            } catch {
                 alert("Invalid response from server");
                 return;
             }
@@ -193,7 +193,7 @@ export function AuthPage({isSignin}: {
                     {/* Toggle Link */}
                     <div className="text-center">
                         <p className="text-slate-400">
-                            {isSignin ? "Don't have an account? " : "Already have an account? "}
+                            {isSignin ? "Don&apos;t have an account? " : "Already have an account? "}
                             <Link 
                                 href={isSignin ? "/signup" : "/signin"} 
                                 className="text-violet-400 hover:text-violet-300 font-medium transition-colors"
