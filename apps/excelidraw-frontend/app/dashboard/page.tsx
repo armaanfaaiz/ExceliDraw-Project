@@ -98,7 +98,7 @@ export default function Dashboard() {
         router.push(`/room/${roomId}`);
     };
 
-    const deleteRoom = async (_roomSlug: string) => {
+    const deleteRoom = async () => {
         // This would need a backend endpoint
         alert("Delete functionality coming soon!");
     };
@@ -294,7 +294,7 @@ export default function Dashboard() {
                                             <button 
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    deleteRoom(room.slug);
+                                                    deleteRoom();
                                                 }}
                                                 className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
                                             >
