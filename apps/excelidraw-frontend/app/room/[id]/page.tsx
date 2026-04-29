@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { HTTP_BACKEND } from "../../../config";
 import { Canvas } from "@/components/Canvas";
@@ -27,6 +27,7 @@ export default function Room() {
     const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
     const [showShareMenu, setShowShareMenu] = useState(false);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
+    const wsRef = useRef<WebSocket | null>(null);
 
     const fetchRoom = useCallback(async (roomId: string) => {
         try {
@@ -46,6 +47,15 @@ export default function Room() {
         }
     }, [router]);
 
+    // Fetch room data once on mount
+    useEffect(() => {
+        const roomId = params.id;
+        if (roomId) {
+            fetchRoom(roomId as string);
+        }
+    }, []);
+
+    // WebSocket connection - create only once
     useEffect(() => {
         const token = localStorage.getItem("token");
         if (!token) {
@@ -53,13 +63,14 @@ export default function Room() {
             return;
         }
 
-        const roomId = params.id;
-        if (roomId) {
-            fetchRoom(roomId as string);
+        // Only create WebSocket if we don't have one
+        if (!wsRef.current) {
             const ws = new WebSocket(`${WS_URL}?token=${token}`);
+            wsRef.current = ws;
             
             ws.onopen = () => {
                 setConnectionStatus('connected');
+                setSocket(ws);
             };
             
             ws.onerror = () => {
@@ -68,15 +79,15 @@ export default function Room() {
             
             ws.onclose = () => {
                 setConnectionStatus('disconnected');
+                wsRef.current = null;
             };
-            
-            setSocket(ws);
 
             return () => {
                 ws.close();
+                wsRef.current = null;
             };
         }
-    }, [params.id, router, fetchRoom]);
+    }, [router]);
 
     const copyRoomLink = () => {
         const url = window.location.href;
