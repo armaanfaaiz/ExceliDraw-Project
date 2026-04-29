@@ -104,6 +104,7 @@ app.post("/room", middleware, async (req, res) => {
             roomName: canvasName
         })
     } catch(e) {
+        console.error("Error creating room:", e);
         res.status(411).json({
             message: "Failed to create room"
         })
@@ -179,6 +180,7 @@ app.get("/my-rooms", middleware, async (req, res) => {
             rooms
         });
     } catch(e) {
+        console.error("Error fetching my-rooms:", e);
         res.status(500).json({
             message: "Failed to fetch rooms"
         });
