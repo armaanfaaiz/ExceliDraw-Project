@@ -12,24 +12,8 @@ const server = http.createServer((req, res) => {
   res.end('WebSocket server is running\n');
 });
 
-// Attach WebSocket server to HTTP server with optimizations
-const wss = new WebSocketServer({ 
-  server,
-  perMessageDeflate: {
-    zlibDeflateOptions: {
-      chunkSize: 1024,
-      memLevel: 7,
-      level: 3
-    },
-    zlibInflateOptions: {
-      chunkSize: 10 * 1024
-    },
-    clientNoContextTakeover: true,
-    serverNoContextTakeover: true,
-    serverMaxWindowBits: 10,
-    concurrencyLimit: 10
-  }
-});
+// Attach WebSocket server to HTTP server
+const wss = new WebSocketServer({ server });
 
 server.listen(Number(PORT), () => {
   console.log(`WebSocket server running on port ${PORT}`);
