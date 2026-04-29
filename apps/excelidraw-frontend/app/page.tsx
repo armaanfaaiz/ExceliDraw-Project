@@ -114,7 +114,7 @@ function App() {
                 <h3 className="text-xl font-semibold text-white">Multiplayer Editing</h3>
               </div>
               <p className="text-slate-400">
-                Multiple users can edit the same canvas simultaneously. See who's drawing what in real-time.
+                Multiple users can edit the same canvas simultaneously. See who&apos;s drawing what in real-time.
               </p>
             </div>
 

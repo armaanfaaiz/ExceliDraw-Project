@@ -23,9 +23,9 @@ import {
 
 export default function Dashboard() {
     const router = useRouter();
-    const [user, setUser] = useState<any>(null);
+    const [, setUser] = useState<{token: string} | null>(null);
     const [roomId, setRoomId] = useState("");
-    const [myRooms, setMyRooms] = useState<any[]>([]);
+    const [myRooms, setMyRooms] = useState<{id: number; slug: string; adminId: string; createdAt: string}[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -83,7 +83,7 @@ export default function Dashboard() {
             } else {
                 alert("Failed to create room");
             }
-        } catch (error) {
+        } catch {
             alert("Error creating room");
         } finally {
             setIsLoading(false);
@@ -98,7 +98,7 @@ export default function Dashboard() {
         router.push(`/room/${roomId}`);
     };
 
-    const deleteRoom = async (roomSlug: string) => {
+    const deleteRoom = async (_roomSlug: string) => {
         // This would need a backend endpoint
         alert("Delete functionality coming soon!");
     };
