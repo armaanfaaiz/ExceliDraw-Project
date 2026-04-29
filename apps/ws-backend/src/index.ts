@@ -12,11 +12,41 @@ const server = http.createServer((req, res) => {
   res.end('WebSocket server is running\n');
 });
 
-// Attach WebSocket server to HTTP server
-const wss = new WebSocketServer({ server });
+// Attach WebSocket server to HTTP server with optimizations
+const wss = new WebSocketServer({ 
+  server,
+  perMessageDeflate: {
+    zlibDeflateOptions: {
+      chunkSize: 1024,
+      memLevel: 7,
+      level: 3
+    },
+    zlibInflateOptions: {
+      chunkSize: 10 * 1024
+    },
+    clientNoContextTakeover: true,
+    serverNoContextTakeover: true,
+    serverMaxWindowBits: 10,
+    concurrencyLimit: 10
+  }
+});
 
 server.listen(Number(PORT), () => {
   console.log(`WebSocket server running on port ${PORT}`);
+});
+
+// Keepalive ping to prevent connection drops
+const interval = setInterval(() => {
+  wss.clients.forEach((ws) => {
+    const extWs = ws as WebSocket;
+    if (extWs.readyState === WebSocket.OPEN) {
+      extWs.ping();
+    }
+  });
+}, 30000); // Ping every 30 seconds
+
+wss.on('close', () => {
+  clearInterval(interval);
 });
 
 interface User {
