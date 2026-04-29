@@ -8,6 +8,7 @@
     "dev": "nodemon --exec tsx src/index.ts"
   },
   "dependencies": {
+    "@repo/common": "workspace:*",
     "@repo/db": "workspace:*",
     "@types/jsonwebtoken": "^9.0.7",
     "jsonwebtoken": "^9.0.2",
