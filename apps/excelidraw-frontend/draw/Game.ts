@@ -89,10 +89,16 @@ export class Game {
 
     initHandlers() {
         // Handle WebSocket open - join room
-        this.socket.onopen = () => {
-            console.log("WebSocket opened, sending join_room message");
+        // Socket may already be open when Game is constructed, so check first
+        if (this.socket.readyState === WebSocket.OPEN) {
+            console.log("Socket already open, sending join_room immediately");
             this.sendJoinRoom();
-        };
+        } else {
+            this.socket.onopen = () => {
+                console.log("WebSocket opened, sending join_room message");
+                this.sendJoinRoom();
+            };
+        }
         
         // Handle incoming messages
         this.socket.onmessage = (event) => {
