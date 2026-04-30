@@ -131,43 +131,55 @@ wss.on('connection', function connection(ws, request) {
     console.log(parsedData);
 
     if (parsedData.type === "chat") {
-      const roomSlug = parsedData.roomId;
+      const roomIdOrSlug = parsedData.roomId;
       const message = parsedData.message;
       
-      console.log(`Broadcasting chat to room ${roomSlug}. User rooms:`, user.rooms);
+      console.log(`Broadcasting chat to room ${roomIdOrSlug}. User rooms:`, user.rooms);
       console.log(`Total users in system:`, users.length);
 
-      // Find room by slug to get its ID
-      const room = await prismaClient.room.findUnique({
-        where: { slug: roomSlug }
+      // Try to find room by slug first, then by numeric ID
+      let room = await prismaClient.room.findUnique({
+        where: { slug: roomIdOrSlug }
       });
-
+      
+      // If not found by slug, try by numeric ID
       if (!room) {
-        console.error("Room not found:", roomSlug);
-        return;
+        const numericId = parseInt(roomIdOrSlug);
+        if (!isNaN(numericId)) {
+          room = await prismaClient.room.findUnique({
+            where: { id: numericId }
+          });
+        }
       }
 
-      await prismaClient.chat.create({
-        data: {
-          roomId: room.id,
-          message,
-          userId
-        }
-      });
+      if (!room) {
+        console.error("Room not found by slug or ID:", roomIdOrSlug);
+        // Still broadcast even if DB lookup fails - collaboration should work
+      } else {
+        // Save to DB if room found
+        await prismaClient.chat.create({
+          data: {
+            roomId: room.id,
+            message,
+            userId
+          }
+        });
+      }
 
+      // ALWAYS broadcast to users in the room (by the ID they joined with)
       let broadcastCount = 0;
       users.forEach(u => {
-        console.log(`Checking user ${u.userId}, rooms:`, u.rooms, `includes ${roomSlug}?`, u.rooms.includes(roomSlug));
-        if (u.rooms.includes(roomSlug)) {
+        console.log(`Checking user ${u.userId}, rooms:`, u.rooms, `includes ${roomIdOrSlug}?`, u.rooms.includes(roomIdOrSlug));
+        if (u.rooms.includes(roomIdOrSlug)) {
           u.ws.send(JSON.stringify({
             type: "chat",
             message: message,
-            roomId: roomSlug
+            roomId: roomIdOrSlug
           }));
           broadcastCount++;
         }
       });
-      console.log(`Broadcast chat to ${broadcastCount} users in room ${roomSlug}`);
+      console.log(`Broadcast chat to ${broadcastCount} users in room ${roomIdOrSlug}`);
     }
 
   });

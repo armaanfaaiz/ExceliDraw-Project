@@ -129,16 +129,26 @@ app.post("/room", middleware, async (req, res) => {
 
 app.get("/chats/:roomSlug", async (req, res) => {
     try {
-        const roomSlug = req.params.roomSlug;
-        console.log("Fetching chats for room:", roomSlug);
+        const roomIdOrSlug = req.params.roomSlug;
+        console.log("Fetching chats for room:", roomIdOrSlug);
 
-        // Find room by slug first to get the numeric ID
-        const room = await prismaClient.room.findUnique({
-            where: { slug: roomSlug }
+        // Find room by slug first, then by numeric ID
+        let room = await prismaClient.room.findUnique({
+            where: { slug: roomIdOrSlug }
         });
+        
+        // If not found by slug, try by numeric ID
+        if (!room) {
+            const numericId = parseInt(roomIdOrSlug);
+            if (!isNaN(numericId)) {
+                room = await prismaClient.room.findUnique({
+                    where: { id: numericId }
+                });
+            }
+        }
 
         if (!room) {
-            console.error("Room not found:", roomSlug);
+            console.error("Room not found by slug or ID:", roomIdOrSlug);
             res.json({ messages: [] });
             return;
         }
