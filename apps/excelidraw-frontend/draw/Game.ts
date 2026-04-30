@@ -49,6 +49,7 @@ export class Game {
 
     socket: WebSocket;
     onTextInput: ((x: number, y: number) => void) | null = null;
+    private messageHandler: ((event: MessageEvent) => void) | null = null;
 
     constructor(canvas: HTMLCanvasElement, roomId: string, socket: WebSocket) {
         this.canvas = canvas;
@@ -63,11 +64,15 @@ export class Game {
     }
     
     destroy() {
+        // Remove mouse event listeners
         this.canvas.removeEventListener("mousedown", this.mouseDownHandler)
-
         this.canvas.removeEventListener("mouseup", this.mouseUpHandler)
-
         this.canvas.removeEventListener("mousemove", this.mouseMoveHandler)
+        
+        // Remove WebSocket message listener
+        if (this.messageHandler) {
+            this.socket.removeEventListener("message", this.messageHandler);
+        }
     }
 
     setTool(tool: Tool) {
@@ -100,9 +105,9 @@ export class Game {
             };
         }
         
-        // Handle incoming messages
-        this.socket.onmessage = (event) => {
-            console.log("WebSocket message received:", event.data);
+        // Handle incoming messages using addEventListener to not overwrite page.tsx handler
+        this.messageHandler = (event: MessageEvent) => {
+            console.log("Game.ts WebSocket message received:", event.data);
             const message = JSON.parse(event.data);
 
             if (message.type === "chat") {
@@ -117,17 +122,9 @@ export class Game {
                     console.error("Error parsing shape:", e);
                 }
             }
-        }
-        
-        // Handle errors
-        this.socket.onerror = (error) => {
-            console.error("WebSocket error:", error);
-        }
-        
-        // Handle close
-        this.socket.onclose = () => {
-            console.log("WebSocket closed");
-        }
+            // Note: user_count messages are handled by page.tsx's onmessage handler
+        };
+        this.socket.addEventListener("message", this.messageHandler);
     }
 
     clearCanvas() {
