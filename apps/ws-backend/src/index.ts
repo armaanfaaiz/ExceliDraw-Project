@@ -133,6 +133,9 @@ wss.on('connection', function connection(ws, request) {
     if (parsedData.type === "chat") {
       const roomSlug = parsedData.roomId;
       const message = parsedData.message;
+      
+      console.log(`Broadcasting chat to room ${roomSlug}. User rooms:`, user.rooms);
+      console.log(`Total users in system:`, users.length);
 
       // Find room by slug to get its ID
       const room = await prismaClient.room.findUnique({
@@ -152,15 +155,19 @@ wss.on('connection', function connection(ws, request) {
         }
       });
 
+      let broadcastCount = 0;
       users.forEach(u => {
+        console.log(`Checking user ${u.userId}, rooms:`, u.rooms, `includes ${roomSlug}?`, u.rooms.includes(roomSlug));
         if (u.rooms.includes(roomSlug)) {
           u.ws.send(JSON.stringify({
             type: "chat",
             message: message,
             roomId: roomSlug
-          }))
+          }));
+          broadcastCount++;
         }
-      })
+      });
+      console.log(`Broadcast chat to ${broadcastCount} users in room ${roomSlug}`);
     }
 
   });

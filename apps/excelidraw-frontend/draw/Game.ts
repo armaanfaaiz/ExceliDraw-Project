@@ -242,13 +242,15 @@ export class Game {
         this.existingShapes.push(shape);
 
         if (this.socket.readyState === WebSocket.OPEN) {
-            this.socket.send(JSON.stringify({
+            const messageData = JSON.stringify({
                 type: "chat",
                 message: JSON.stringify({
                     shape
                 }),
                 roomId: this.roomId
-            }));
+            });
+            console.log("Sending shape to server:", messageData);
+            this.socket.send(messageData);
         } else {
             console.error("WebSocket is not open, cannot send message");
         }
