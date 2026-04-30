@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { IconButton } from "./IconButton";
 import { 
     Circle, 
     Pencil, 
@@ -12,15 +11,7 @@ import {
     Download, 
     Upload,
     MousePointer2,
-    ZoomIn,
-    ZoomOut,
-    Undo,
-    Redo,
-    Settings,
-    Share2,
-    Users,
-    Lock,
-    Unlock
+    Users
 } from "lucide-react";
 import { Game } from "@/draw/Game";
 
@@ -36,9 +27,8 @@ export function Canvas({ socket, roomId, userCount = 1 }: CanvasProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [game, setGame] = useState<Game>();
     const [selectedTool, setSelectedTool] = useState<Tool>("pencil");
-    const [scale, setScale] = useState(1);
-    const [showGrid, setShowGrid] = useState(true);
-    const [isLocked, setIsLocked] = useState(false);
+    const [scale] = useState(1);
+    const [showGrid] = useState(true);
     const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -77,7 +67,7 @@ export function Canvas({ socket, roomId, userCount = 1 }: CanvasProps) {
                 try {
                     const data = JSON.parse(event.target?.result as string);
                     game.importShapes(data);
-                } catch (err) {
+                } catch {
                     alert("Invalid file format");
                 }
             };
@@ -85,9 +75,6 @@ export function Canvas({ socket, roomId, userCount = 1 }: CanvasProps) {
         }
         e.target.value = '';
     }, [game]);
-
-    const handleZoomIn = () => setScale(s => Math.min(s * 1.2, 3));
-    const handleZoomOut = () => setScale(s => Math.max(s / 1.2, 0.3));
 
     return (
         <div ref={containerRef} className="relative w-full h-full overflow-hidden bg-[#121212]">
