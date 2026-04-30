@@ -66,13 +66,11 @@ export function AuthPage({isSignin}: {
             }
 
             if (response.ok) {
-                if (isSignin && data.token) {
+                if (data.token) {
                     localStorage.setItem("token", data.token);
                     router.push("/dashboard");
-                } else if (!isSignin) {
-                    router.push("/signin");
                 } else {
-                    alert("Signin failed: No token received");
+                    alert("Authentication failed: No token received");
                 }
             } else {
                 alert("Authentication failed: " + (data.message || "Unknown error"));

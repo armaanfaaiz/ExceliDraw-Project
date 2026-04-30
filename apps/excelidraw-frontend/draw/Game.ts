@@ -1,14 +1,14 @@
 import { Tool } from "@/components/Canvas";
 import { getExistingShapes } from "./http";
 
-type Shape = {
-    type: "rect";
+export type Shape = {
+    type: "rect" | "rectangle";
     x: number;
     y: number;
     width: number;
     height: number;
 } | {
-    type: "circle";
+    type: "circle" | "ellipse";
     centerX: number;
     centerY: number;
     radius: number;
@@ -199,7 +199,7 @@ export class Game {
 
         const selectedTool = this.selectedTool;
         let shape: Shape | null = null;
-        if (selectedTool === "rect") {
+        if (selectedTool === "rectangle") {
             // Only create if there's actual size
             if (Math.abs(width) > 5 && Math.abs(height) > 5) {
                 shape = {
@@ -210,7 +210,7 @@ export class Game {
                     width
                 }
             }
-        } else if (selectedTool === "circle") {
+        } else if (selectedTool === "ellipse") {
             const radius = Math.max(width, height) / 2;
             if (radius > 5) {
                 shape = {
@@ -282,9 +282,9 @@ export class Game {
                     this.drawExistingShapes();
                     
                     // Draw preview
-                    if (selectedTool === "rect") {
+                    if (selectedTool === "rectangle") {
                         this.ctx.strokeRect(this.startX, this.startY, width, height);   
-                    } else if (selectedTool === "circle") {
+                    } else if (selectedTool === "ellipse") {
                         const radius = Math.max(width, height) / 2;
                         const centerX = this.startX + radius;
                         const centerY = this.startY + radius;
@@ -400,10 +400,41 @@ export class Game {
 
     initMouseHandlers() {
         this.canvas.addEventListener("mousedown", this.mouseDownHandler)
-
         this.canvas.addEventListener("mouseup", this.mouseUpHandler)
-
         this.canvas.addEventListener("mousemove", this.mouseMoveHandler)    
+    }
 
+    // Export all shapes to JSON
+    exportShapes() {
+        return {
+            version: 1,
+            shapes: this.existingShapes,
+            timestamp: Date.now()
+        };
+    }
+
+    // Import shapes from JSON data
+    importShapes(data: { shapes?: Shape[] }) {
+        if (data.shapes && Array.isArray(data.shapes)) {
+            this.existingShapes = [...this.existingShapes, ...data.shapes];
+            this.clearCanvas();
+            
+            // Broadcast imported shapes to other users
+            if (this.socket.readyState === WebSocket.OPEN) {
+                data.shapes.forEach(shape => {
+                    this.socket.send(JSON.stringify({
+                        type: "chat",
+                        message: JSON.stringify({ shape }),
+                        roomId: this.roomId
+                    }));
+                });
+            }
+        }
+    }
+
+    // Clear all shapes
+    clearAll() {
+        this.existingShapes = [];
+        this.clearCanvas();
     }
 }
