@@ -224,6 +224,6 @@ app.get("/my-rooms", middleware, async (req, res) => {
 })
 
 const PORT = process.env.PORT || 3002;
-app.listen(PORT, () => {
+app.listen(Number(PORT), "0.0.0.0", () => {
     console.log(`HTTP Backend running on port ${PORT}`);
-});
+});

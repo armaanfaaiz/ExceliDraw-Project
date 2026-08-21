@@ -25,7 +25,7 @@ const server = http.createServer((req, res) => {
 // Attach WebSocket server to HTTP server
 const wss = new WebSocketServer({ server });
 
-server.listen(Number(PORT), () => {
+server.listen(Number(PORT), "0.0.0.0", () => {
   console.log(`WebSocket server running on port ${PORT}`);
 });
 

@@ -1,17 +1,19 @@
 {
   "name": "@repo/db",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    "./client": "./src/index.ts"
+    "./client": "./dist/index.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "prisma generate",
+    "build": "prisma generate && tsc",
     "postinstall": "prisma generate"
   },
   "devDependencies": {
-    "@repo/typescript-config": "workspace:*"
+    "@repo/typescript-config": "workspace:*",
+    "typescript": "^5"
   },
   "keywords": [],
   "author": "",
@@ -22,3 +24,4 @@
     "prisma": "^6.2.1"
   }
 }
+
