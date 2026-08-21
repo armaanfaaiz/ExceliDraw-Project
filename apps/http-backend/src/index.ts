@@ -1,11 +1,13 @@
 import { Buffer } from "buffer";
 if (typeof (Buffer as any).SlowBuffer === "undefined") {
-    (Buffer as any).SlowBuffer = class SlowBuffer extends Uint8Array {};
-    (Buffer as any).SlowBuffer.prototype = Object.create(Buffer.prototype);
+    function SlowBuffer() {}
+    (SlowBuffer as any).prototype = Object.create(Buffer.prototype);
+    (Buffer as any).SlowBuffer = SlowBuffer;
 }
 if (typeof (globalThis as any).SlowBuffer === "undefined") {
     (globalThis as any).SlowBuffer = (Buffer as any).SlowBuffer;
 }
+
 
 import express from "express";
 import jwt from "jsonwebtoken";
