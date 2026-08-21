@@ -1,5 +1,15 @@
+import { Buffer } from "buffer";
+if (typeof (Buffer as any).SlowBuffer === "undefined") {
+    (Buffer as any).SlowBuffer = class SlowBuffer extends Uint8Array {};
+    (Buffer as any).SlowBuffer.prototype = Object.create(Buffer.prototype);
+}
+if (typeof (globalThis as any).SlowBuffer === "undefined") {
+    (globalThis as any).SlowBuffer = (Buffer as any).SlowBuffer;
+}
+
 import { WebSocket, WebSocketServer } from 'ws';
 import jwt, { JwtPayload } from "jsonwebtoken";
+
 import { JWT_SECRET } from '@repo/backend-common';
 import { prismaClient } from "@repo/db/client";
 import http from 'http';

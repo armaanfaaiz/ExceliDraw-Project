@@ -1,5 +1,15 @@
+import { Buffer } from "buffer";
+if (typeof (Buffer as any).SlowBuffer === "undefined") {
+    (Buffer as any).SlowBuffer = class SlowBuffer extends Uint8Array {};
+    (Buffer as any).SlowBuffer.prototype = Object.create(Buffer.prototype);
+}
+if (typeof (globalThis as any).SlowBuffer === "undefined") {
+    (globalThis as any).SlowBuffer = (Buffer as any).SlowBuffer;
+}
+
 import express from "express";
 import jwt from "jsonwebtoken";
+
 import { JWT_SECRET } from '@repo/backend-common';
 import { middleware } from "./middleware";
 import { CreateUserSchema, SigninSchema, CreateRoomSchema } from "@repo/common/types";
