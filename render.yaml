@@ -14,6 +14,8 @@ services:
     buildCommand: pnpm install --frozen-lockfile && pnpm --filter @repo/db run build && pnpm --filter http-backend run build
     startCommand: node apps/http-backend/dist/index.js
     envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
       - key: PORT
         value: 3002
       - key: JWT_SECRET
@@ -33,6 +35,8 @@ services:
     buildCommand: pnpm install --frozen-lockfile && pnpm --filter @repo/db run build && pnpm --filter ws-backend run build
     startCommand: node apps/ws-backend/dist/index.js
     envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
       - key: PORT
         value: 8080
       - key: JWT_SECRET
@@ -53,6 +57,8 @@ services:
     buildCommand: pnpm install --frozen-lockfile && pnpm --filter excelidraw-frontend run build
     startCommand: pnpm --filter excelidraw-frontend start
     envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
       - key: NEXT_PUBLIC_HTTP_BACKEND
         fromService:
           type: web
@@ -60,3 +66,4 @@ services:
           property: url
       - key: NEXT_PUBLIC_WS_URL
         value: wss://excelidraw-ws-backend.onrender.com
+
