@@ -1,0 +1,62 @@
+services:
+  # Managed PostgreSQL Database
+  - type: postgres
+    name: excelidraw-db
+    databaseName: excelidraw
+    user: excelidraw_user
+    plan: free
+
+  # HTTP Express Backend API
+  - type: web
+    name: excelidraw-http-backend
+    env: node
+    plan: free
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @repo/db run build && pnpm --filter http-backend run build
+    startCommand: node apps/http-backend/dist/index.js
+    envVars:
+      - key: PORT
+        value: 3002
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: excelidraw-db
+          property: connectionString
+      - key: FRONTEND_URL
+        value: https://excelidraw-frontend.onrender.com
+
+  # WebSocket Realtime Server
+  - type: web
+    name: excelidraw-ws-backend
+    env: node
+    plan: free
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @repo/db run build && pnpm --filter ws-backend run build
+    startCommand: node apps/ws-backend/dist/index.js
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: JWT_SECRET
+        fromService:
+          type: web
+          name: excelidraw-http-backend
+          property: JWT_SECRET
+      - key: DATABASE_URL
+        fromDatabase:
+          name: excelidraw-db
+          property: connectionString
+
+  # Next.js Frontend Web Application
+  - type: web
+    name: excelidraw-frontend
+    env: node
+    plan: free
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter excelidraw-frontend run build
+    startCommand: pnpm --filter excelidraw-frontend start
+    envVars:
+      - key: NEXT_PUBLIC_HTTP_BACKEND
+        fromService:
+          type: web
+          name: excelidraw-http-backend
+          property: url
+      - key: NEXT_PUBLIC_WS_URL
+        value: wss://excelidraw-ws-backend.onrender.com
