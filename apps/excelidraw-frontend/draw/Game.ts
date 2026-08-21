@@ -195,8 +195,10 @@ export class Game {
         this.canvas.removeEventListener("mousedown", this.mouseDownHandler);
         this.canvas.removeEventListener("mouseup", this.mouseUpHandler);
         this.canvas.removeEventListener("mousemove", this.mouseMoveHandler);
+        this.canvas.removeEventListener("dblclick", this.doubleClickHandler);
         this.canvas.removeEventListener("wheel", this.wheelHandler);
         window.removeEventListener("keydown", this.keyDownHandler);
+
 
         if (this.messageHandler) {
             this.socket.removeEventListener("message", this.messageHandler);
@@ -396,6 +398,15 @@ export class Game {
         return { x, y };
     }
 
+    // Convert Canvas World coordinates to Screen Space coordinates
+    public worldToScreen(worldX: number, worldY: number): { x: number; y: number } {
+        const rect = this.canvas.getBoundingClientRect();
+        const screenX = worldX * this.zoom + this.offsetX + rect.left;
+        const screenY = worldY * this.zoom + this.offsetY + rect.top;
+        return { x: screenX, y: screenY };
+    }
+
+
     // Clear and redraw entire canvas
     public clearCanvas() {
         const dpr = window.devicePixelRatio || 1;
@@ -511,7 +522,7 @@ export class Game {
             }
         } else if (shape.type === "text") {
             const fontFam = shape.fontFamily === "Caveat" 
-                ? "Caveat, var(--font-caveat), cursive" 
+                ? "Caveat, cursive, sans-serif" 
                 : shape.fontFamily === "monospace" 
                 ? "monospace" 
                 : "sans-serif";
@@ -527,6 +538,7 @@ export class Game {
                 this.ctx.fillText(line, shape.x, shape.y + i * lineHeight);
             });
         }
+
 
         this.ctx.restore();
     }
@@ -563,7 +575,7 @@ export class Game {
             });
             return { x: minX, y: minY, width: Math.max(10, maxX - minX), height: Math.max(10, maxY - minY) };
         } else if (shape.type === "text") {
-            const fontFam = shape.fontFamily === "Caveat" ? "Caveat, cursive" : "sans-serif";
+            const fontFam = shape.fontFamily === "Caveat" ? "Caveat, cursive, sans-serif" : shape.fontFamily === "monospace" ? "monospace" : "sans-serif";
             this.ctx.font = `${shape.fontSize || 24}px ${fontFam}`;
             const lines = shape.content.split("\n");
             let maxWidth = 40;
@@ -574,6 +586,7 @@ export class Game {
             const height = lines.length * (shape.fontSize || 24) * 1.2;
             return { x: shape.x, y: shape.y, width: maxWidth + 10, height: height + 5 };
         }
+
         return { x: 0, y: 0, width: 0, height: 0 };
     }
 
@@ -1180,12 +1193,28 @@ export class Game {
         }
     }
 
+    doubleClickHandler = (e: MouseEvent) => {
+        const world = this.screenToWorld(e.clientX, e.clientY);
+        for (let i = this.existingShapes.length - 1; i >= 0; i--) {
+            const shape = this.existingShapes[i];
+            if (shape.type === "text" && this.hitTestShape(shape, world.x, world.y)) {
+                const screen = this.worldToScreen(shape.x, shape.y);
+                if (this.onTextInputRequested) {
+                    this.onTextInputRequested(screen.x, screen.y, shape.content, shape.id);
+                }
+                return;
+            }
+        }
+    };
+
     initMouseHandlers() {
         this.canvas.addEventListener("mousedown", this.mouseDownHandler);
         this.canvas.addEventListener("mouseup", this.mouseUpHandler);
         this.canvas.addEventListener("mousemove", this.mouseMoveHandler);
+        this.canvas.addEventListener("dblclick", this.doubleClickHandler);
         this.canvas.addEventListener("wheel", this.wheelHandler, { passive: false });
     }
+
 
     initKeyHandlers() {
         window.addEventListener("keydown", this.keyDownHandler);
