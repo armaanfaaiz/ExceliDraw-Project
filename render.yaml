@@ -11,7 +11,7 @@ services:
     name: excelidraw-http-backend
     env: node
     plan: free
-    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @repo/db run build && pnpm --filter http-backend run build
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @repo/backend-common run build && pnpm --filter @repo/db run build && pnpm --filter http-backend run build
     startCommand: node apps/http-backend/dist/index.js
     envVars:
       - key: NODE_VERSION
@@ -32,7 +32,7 @@ services:
     name: excelidraw-ws-backend
     env: node
     plan: free
-    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @repo/db run build && pnpm --filter ws-backend run build
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @repo/backend-common run build && pnpm --filter @repo/db run build && pnpm --filter ws-backend run build
     startCommand: node apps/ws-backend/dist/index.js
     envVars:
       - key: NODE_VERSION

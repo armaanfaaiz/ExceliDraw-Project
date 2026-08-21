@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "build": "pnpm install && cd ../../packages/db && npx prisma generate && cd ../../apps/ws-backend && tsc -b",
+    "build": "pnpm --filter @repo/backend-common run build && pnpm --filter @repo/db run build && tsc -b",
     "start": "node ./dist/index.js",
     "dev": "nodemon --exec tsx src/index.ts"
   },
