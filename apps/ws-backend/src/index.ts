@@ -10,7 +10,8 @@ if (typeof (globalThis as any).SlowBuffer === "undefined") {
 
 
 import { WebSocket, WebSocketServer } from 'ws';
-import jwt, { JwtPayload } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
+
 
 import { JWT_SECRET } from '@repo/backend-common';
 import { prismaClient } from "@repo/db/client";
