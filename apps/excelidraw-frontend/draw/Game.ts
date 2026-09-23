@@ -128,6 +128,8 @@ export class Game {
     private dragOffsetX = 0;
     private dragOffsetY = 0;
     private initialShapeState: Shape | null = null;
+    private copiedShape: Shape | null = null;
+
 
     // Pan and zoom
     private offsetX = 0;
@@ -1058,19 +1060,26 @@ export class Game {
             if (this.selectedShapeId) {
                 this.deleteSelectedShape();
             }
-        } else if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
             if (e.shiftKey) {
                 this.redo();
             } else {
                 this.undo();
             }
-        } else if ((e.ctrlKey || e.metaKey) && e.key === "y") {
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") {
             this.redo();
-        } else if ((e.ctrlKey || e.metaKey) && e.key === "d") {
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") {
             e.preventDefault();
             this.duplicateSelectedShape();
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c") {
+            e.preventDefault();
+            this.copySelectedShape();
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v") {
+            e.preventDefault();
+            this.pasteCopiedShape();
         }
     };
+
 
     private eraseAtPoint(x: number, y: number) {
         let deletedAny = false;
@@ -1133,7 +1142,97 @@ export class Game {
         this.clearCanvas();
     }
 
+    public copySelectedShape() {
+        if (!this.selectedShapeId) return;
+        const shape = this.existingShapes.find(s => s.id === this.selectedShapeId);
+        if (shape) {
+            this.copiedShape = JSON.parse(JSON.stringify(shape));
+        }
+    }
+
+    public pasteCopiedShape() {
+        if (!this.copiedShape) return;
+        this.saveHistory();
+        const newShape: Shape = JSON.parse(JSON.stringify(this.copiedShape));
+        newShape.id = Math.random().toString(36).substring(2, 9);
+        const offset = 25;
+        if (newShape.type === "rect" || newShape.type === "rectangle" || newShape.type === "diamond" || newShape.type === "text") {
+            newShape.x += offset;
+            newShape.y += offset;
+        } else if (newShape.type === "circle" || newShape.type === "ellipse") {
+            newShape.centerX += offset;
+            newShape.centerY += offset;
+        } else if (newShape.type === "line" || newShape.type === "arrow") {
+            newShape.startX += offset;
+            newShape.startY += offset;
+            newShape.endX += offset;
+            newShape.endY += offset;
+        } else if (newShape.type === "pencil") {
+            newShape.points = newShape.points.map(p => ({ x: p.x + offset, y: p.y + offset }));
+        }
+
+        this.existingShapes.push(newShape);
+        this.selectedShapeId = newShape.id;
+        if (this.onSelectionChange) this.onSelectionChange(newShape);
+        this.broadcastShape(newShape, "create");
+        this.clearCanvas();
+    }
+
+    public bringToFront() {
+        if (!this.selectedShapeId) return;
+        const idx = this.existingShapes.findIndex(s => s.id === this.selectedShapeId);
+        if (idx !== -1 && idx < this.existingShapes.length - 1) {
+            this.saveHistory();
+            const [shape] = this.existingShapes.splice(idx, 1);
+            this.existingShapes.push(shape);
+            this.clearCanvas();
+        }
+    }
+
+    public sendToBack() {
+        if (!this.selectedShapeId) return;
+        const idx = this.existingShapes.findIndex(s => s.id === this.selectedShapeId);
+        if (idx !== -1 && idx > 0) {
+            this.saveHistory();
+            const [shape] = this.existingShapes.splice(idx, 1);
+            this.existingShapes.unshift(shape);
+            this.clearCanvas();
+        }
+    }
+
+    public bringForward() {
+        if (!this.selectedShapeId) return;
+        const idx = this.existingShapes.findIndex(s => s.id === this.selectedShapeId);
+        if (idx !== -1 && idx < this.existingShapes.length - 1) {
+            this.saveHistory();
+            const temp = this.existingShapes[idx];
+            this.existingShapes[idx] = this.existingShapes[idx + 1];
+            this.existingShapes[idx + 1] = temp;
+            this.clearCanvas();
+        }
+    }
+
+    public sendBackward() {
+        if (!this.selectedShapeId) return;
+        const idx = this.existingShapes.findIndex(s => s.id === this.selectedShapeId);
+        if (idx > 0) {
+            this.saveHistory();
+            const temp = this.existingShapes[idx];
+            this.existingShapes[idx] = this.existingShapes[idx - 1];
+            this.existingShapes[idx - 1] = temp;
+            this.clearCanvas();
+        }
+    }
+
+    public exportPNG() {
+        const link = document.createElement("a");
+        link.download = `excelidraw-${this.roomId}-${Date.now()}.png`;
+        link.href = this.canvas.toDataURL("image/png");
+        link.click();
+    }
+
     // Add text shape
+
     public addText(x: number, y: number, content: string, shapeId?: string) {
         if (!content.trim()) return;
 

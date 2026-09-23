@@ -43,67 +43,85 @@ app.use(cors({
     credentials: true
 }));
 
-app.post("/signup", async (req, res) => {
+import crypto from "crypto";
 
+function hashPassword(password: string): string {
+    const salt = crypto.randomBytes(16).toString("hex");
+    const hash = crypto.scryptSync(password, salt, 64).toString("hex");
+    return `${salt}:${hash}`;
+}
+
+function verifyPassword(password: string, storedHash: string): boolean {
+    const [salt, hash] = storedHash.split(":");
+    if (!salt || !hash) return password === storedHash;
+    try {
+        const verifyHash = crypto.scryptSync(password, salt, 64);
+        const keyBuffer = Buffer.from(hash, "hex");
+        return crypto.timingSafeEqual(keyBuffer, verifyHash);
+    } catch {
+        return false;
+    }
+}
+
+app.post("/signup", async (req, res) => {
     const parsedData = CreateUserSchema.safeParse(req.body);
     if (!parsedData.success) {
         console.log(parsedData.error);
         res.json({
             message: "Incorrect inputs"
-        })
+        });
         return;
     }
     try {
+        const hashedPassword = hashPassword(parsedData.data.password);
         const user = await prismaClient.user.create({
             data: {
                 email: parsedData.data?.username,
-                // TODO: Hash the pw
-                password: parsedData.data.password,
+                password: hashedPassword,
                 name: parsedData.data.name
             }
-        })
+        });
         res.json({
             userId: user.id
-        })
+        });
     } catch(e) {
         res.status(411).json({
             message: "User already exists with this username"
-        })
+        });
     }
-})
+});
 
 app.post("/signin", async (req, res) => {
     const parsedData = SigninSchema.safeParse(req.body);
     if (!parsedData.success) {
         res.json({
             message: "Incorrect inputs"
-        })
+        });
         return;
     }
 
-    // TODO: Compare the hashed pws here
     const user = await prismaClient.user.findFirst({
         where: {
-            email: parsedData.data.username,
-            password: parsedData.data.password
+            email: parsedData.data.username
         }
-    })
+    });
 
-    if (!user) {
+    if (!user || !verifyPassword(parsedData.data.password, user.password)) {
         res.status(403).json({
             message: "Not authorized"
-        })
+        });
         return;
     }
 
     const token = jwt.sign({
-        userId: user?.id
+        userId: user.id
     }, JWT_SECRET);
 
     res.json({
         token
-    })
-})
+    });
+});
+
 
 app.post("/room", middleware, async (req, res) => {
     // @ts-ignore: TODO: Fix this

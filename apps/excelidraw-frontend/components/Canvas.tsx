@@ -23,8 +23,16 @@ import {
     Redo2,
     Copy,
     Sparkles,
-    Diamond
+    Diamond,
+    Image,
+    HelpCircle,
+    ArrowUp,
+    ArrowDown,
+    ArrowUpToLine,
+    ArrowDownToLine,
+    X
 } from "lucide-react";
+
 import { Game, Shape, FillStyle, StrokeStyle, FontFamily, Theme } from "@/draw/Game";
 
 export type Tool = "selection" | "rectangle" | "diamond" | "ellipse" | "arrow" | "line" | "pencil" | "text" | "eraser" | "hand";
@@ -61,6 +69,8 @@ export function Canvas({ socket, roomId, userCount = 1 }: CanvasProps) {
     // Zoom and Selection
     const [zoom, setZoom] = useState<number>(1);
     const [selectedShape, setSelectedShape] = useState<Shape | null>(null);
+    const [showHelpModal, setShowHelpModal] = useState<boolean>(false);
+
 
     // Inline Text Editor state
     const [textInput, setTextInput] = useState<{ x: number; y: number; content: string; shapeId?: string } | null>(null);
@@ -148,7 +158,9 @@ export function Canvas({ socket, roomId, userCount = 1 }: CanvasProps) {
             if (key === "8" || key === "p") setSelectedTool("pencil");
             if (key === "9" || key === "t") setSelectedTool("text");
             if (key === "0" || key === "x") setSelectedTool("eraser");
+            if (key === "?" || key === "/") setShowHelpModal((prev) => !prev);
         };
+
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
@@ -278,7 +290,16 @@ export function Canvas({ socket, roomId, userCount = 1 }: CanvasProps) {
 
                     <div className={`h-4 w-px ${isDark ? "bg-[#2d2d2d]" : "bg-slate-200"}`} />
 
-                    {/* Export */}
+                    {/* Export PNG */}
+                    <button
+                        onClick={() => game?.exportPNG()}
+                        className={`p-2 rounded-lg transition-all ${isDark ? "hover:bg-[#2d2d2d] text-emerald-400" : "hover:bg-slate-100 text-emerald-600"}`}
+                        title="Export PNG Image"
+                    >
+                        <Image size={18} />
+                    </button>
+
+                    {/* Export JSON */}
                     <button
                         onClick={handleExportJSON}
                         className={`p-2 rounded-lg transition-all ${isDark ? "hover:bg-[#2d2d2d] text-gray-300" : "hover:bg-slate-100 text-slate-600"}`}
@@ -294,6 +315,18 @@ export function Canvas({ socket, roomId, userCount = 1 }: CanvasProps) {
                     </label>
 
                     <div className={`h-4 w-px ${isDark ? "bg-[#2d2d2d]" : "bg-slate-200"}`} />
+
+                    {/* Keyboard Help */}
+                    <button
+                        onClick={() => setShowHelpModal(true)}
+                        className={`p-2 rounded-lg transition-all ${isDark ? "hover:bg-[#2d2d2d] text-indigo-400" : "hover:bg-slate-100 text-indigo-600"}`}
+                        title="Keyboard Shortcuts (?)"
+                    >
+                        <HelpCircle size={18} />
+                    </button>
+
+                    <div className={`h-4 w-px ${isDark ? "bg-[#2d2d2d]" : "bg-slate-200"}`} />
+
 
                     {/* Clear All */}
                     <button
@@ -515,8 +548,49 @@ export function Canvas({ socket, roomId, userCount = 1 }: CanvasProps) {
 
                     {/* Actions on Selected Shape */}
                     {selectedShape && (
-                        <div className="pt-2 border-t border-gray-700/50 flex flex-col gap-2">
-                            <span className={`block font-semibold ${isDark ? "text-gray-300" : "text-slate-600"}`}>Actions</span>
+                        <div className="pt-2 border-t border-gray-700/50 flex flex-col gap-3">
+                            <div>
+                                <span className={`block font-semibold mb-2 ${isDark ? "text-gray-300" : "text-slate-600"}`}>Layer Order</span>
+                                <div className="grid grid-cols-4 gap-1">
+                                    <button
+                                        onClick={() => game?.bringToFront()}
+                                        className={`p-1.5 rounded-lg flex items-center justify-center border transition-all ${
+                                            isDark ? "bg-[#2a2a2a] hover:bg-[#333] border-[#333] text-gray-300" : "bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700"
+                                        }`}
+                                        title="Bring to Front"
+                                    >
+                                        <ArrowUpToLine size={16} />
+                                    </button>
+                                    <button
+                                        onClick={() => game?.bringForward()}
+                                        className={`p-1.5 rounded-lg flex items-center justify-center border transition-all ${
+                                            isDark ? "bg-[#2a2a2a] hover:bg-[#333] border-[#333] text-gray-300" : "bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700"
+                                        }`}
+                                        title="Bring Forward"
+                                    >
+                                        <ArrowUp size={16} />
+                                    </button>
+                                    <button
+                                        onClick={() => game?.sendBackward()}
+                                        className={`p-1.5 rounded-lg flex items-center justify-center border transition-all ${
+                                            isDark ? "bg-[#2a2a2a] hover:bg-[#333] border-[#333] text-gray-300" : "bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700"
+                                        }`}
+                                        title="Send Backward"
+                                    >
+                                        <ArrowDown size={16} />
+                                    </button>
+                                    <button
+                                        onClick={() => game?.sendToBack()}
+                                        className={`p-1.5 rounded-lg flex items-center justify-center border transition-all ${
+                                            isDark ? "bg-[#2a2a2a] hover:bg-[#333] border-[#333] text-gray-300" : "bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700"
+                                        }`}
+                                        title="Send to Back"
+                                    >
+                                        <ArrowDownToLine size={16} />
+                                    </button>
+                                </div>
+                            </div>
+
                             <div className="flex gap-2">
                                 <button
                                     onClick={() => game?.duplicateSelectedShape()}
@@ -536,6 +610,7 @@ export function Canvas({ socket, roomId, userCount = 1 }: CanvasProps) {
                             </div>
                         </div>
                     )}
+
                 </div>
             </div>
 
@@ -591,9 +666,78 @@ export function Canvas({ socket, roomId, userCount = 1 }: CanvasProps) {
                 </div>
             </div>
 
+            {/* Keyboard Shortcuts Help Modal */}
+            {showHelpModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className={`w-full max-w-lg p-6 rounded-2xl border shadow-2xl transition-all ${
+                        isDark ? "bg-[#1e1e1e] border-[#2d2d2d] text-white" : "bg-white border-slate-200 text-slate-900"
+                    }`}>
+                        <div className="flex items-center justify-between pb-4 border-b border-gray-700/50 mb-4">
+                            <div className="flex items-center gap-2 font-bold text-lg">
+                                <Sparkles className="text-indigo-500" size={20} />
+                                <span>Keyboard Shortcuts</span>
+                            </div>
+                            <button
+                                onClick={() => setShowHelpModal(false)}
+                                className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-6 text-sm max-h-[60vh] overflow-y-auto no-scrollbar">
+                            <div>
+                                <h4 className="font-semibold text-indigo-400 mb-3 uppercase tracking-wider text-xs">Tools</h4>
+                                <div className="space-y-2">
+                                    {[
+                                        { name: "Hand (Pan)", key: "1 / H" },
+                                        { name: "Selection", key: "2 / V" },
+                                        { name: "Rectangle", key: "3 / R" },
+                                        { name: "Diamond", key: "4 / D" },
+                                        { name: "Ellipse", key: "5 / E" },
+                                        { name: "Arrow", key: "6 / A" },
+                                        { name: "Line", key: "7 / L" },
+                                        { name: "Draw (Pencil)", key: "8 / P" },
+                                        { name: "Text", key: "9 / T" },
+                                        { name: "Eraser", key: "0 / X" },
+                                    ].map((item) => (
+                                        <div key={item.name} className="flex items-center justify-between">
+                                            <span className={isDark ? "text-gray-300" : "text-slate-700"}>{item.name}</span>
+                                            <kbd className="px-2 py-0.5 rounded bg-gray-800 text-gray-200 border border-gray-700 font-mono text-xs">{item.key}</kbd>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <h4 className="font-semibold text-indigo-400 mb-3 uppercase tracking-wider text-xs">Edit Actions</h4>
+                                <div className="space-y-2">
+                                    {[
+                                        { name: "Copy", key: "Ctrl + C" },
+                                        { name: "Paste", key: "Ctrl + V" },
+                                        { name: "Duplicate", key: "Ctrl + D" },
+                                        { name: "Delete", key: "Del / Backspace" },
+                                        { name: "Undo", key: "Ctrl + Z" },
+                                        { name: "Redo", key: "Ctrl + Y" },
+                                        { name: "Edit Text", key: "Double Click" },
+                                        { name: "Toggle Help", key: "?" },
+                                    ].map((item) => (
+                                        <div key={item.name} className="flex items-center justify-between">
+                                            <span className={isDark ? "text-gray-300" : "text-slate-700"}>{item.name}</span>
+                                            <kbd className="px-2 py-0.5 rounded bg-gray-800 text-gray-200 border border-gray-700 font-mono text-xs">{item.key}</kbd>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }
+
 
 function ToolButton({ 
     tool, 
