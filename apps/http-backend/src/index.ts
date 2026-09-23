@@ -124,8 +124,7 @@ app.post("/signin", async (req, res) => {
 
 
 app.post("/room", middleware, async (req, res) => {
-    // @ts-ignore: TODO: Fix this
-    const userId = req.userId;
+    const userId = req.userId!;
 
     try {
         // Get the count of existing rooms for this user
@@ -219,8 +218,7 @@ app.get("/room/:slug", async (req, res) => {
 })
 
 app.get("/my-rooms", middleware, async (req, res) => {
-    // @ts-ignore: TODO: Fix this
-    const userId = req.userId;
+    const userId = req.userId!;
 
     try {
         const rooms = await prismaClient.room.findMany({
