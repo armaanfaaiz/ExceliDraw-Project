@@ -8,210 +8,107 @@ if (typeof (globalThis as any).SlowBuffer === "undefined") {
     (globalThis as any).SlowBuffer = (Buffer as any).SlowBuffer;
 }
 
-
-import { WebSocket, WebSocketServer } from 'ws';
+import { WebSocket, WebSocketServer } from "ws";
 import jwt from "jsonwebtoken";
-
-
-import { JWT_SECRET } from '@repo/backend-common';
+import http from "http";
+import { JWT_SECRET } from "@repo/backend-common";
 import { prismaClient } from "@repo/db/client";
-import http from 'http';
 
 const PORT = process.env.PORT || 8080;
-
-// Create HTTP server for Render compatibility
 const server = http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('WebSocket server is running\n');
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.end("WebSocket server running\n");
 });
 
-// Attach WebSocket server to HTTP server
 const wss = new WebSocketServer({ server });
 
 server.listen(Number(PORT), "0.0.0.0", () => {
-  console.log(`WebSocket server running on port ${PORT}`);
-});
-
-// Keepalive ping to prevent connection drops
-const interval = setInterval(() => {
-  wss.clients.forEach((ws) => {
-    const extWs = ws as WebSocket;
-    if (extWs.readyState === WebSocket.OPEN) {
-      extWs.ping();
-    }
-  });
-}, 30000); // Ping every 30 seconds
-
-wss.on('close', () => {
-  clearInterval(interval);
+    console.log(`WebSocket server running on port ${PORT}`);
 });
 
 interface User {
-  ws: WebSocket,
-  rooms: string[],
-  userId: string
+    ws: WebSocket;
+    rooms: string[];
+    userId: string;
 }
 
 const users: User[] = [];
 
 function checkUser(token: string): string | null {
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-
-    if (typeof decoded == "string") {
-      return null;
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+        return decoded?.userId || null;
+    } catch {
+        return null;
     }
-
-    if (!decoded || !decoded.userId) {
-      return null;
-    }
-
-    return decoded.userId;
-  } catch(e) {
-    return null;
-  }
-  return null;
-}
-
-// Track users per room for count
-function getRoomUserCount(roomId: string): number {
-  return users.filter(u => u.rooms.includes(roomId)).length;
 }
 
 function broadcastUserCount(roomId: string) {
-  const count = getRoomUserCount(roomId);
-  users.forEach(user => {
-    if (user.rooms.includes(roomId)) {
-      user.ws.send(JSON.stringify({
-        type: "user_count",
-        count: count,
-        roomId: roomId
-      }));
-    }
-  });
+    const count = users.filter(u => u.rooms.includes(roomId)).length;
+    users.forEach(u => {
+        if (u.rooms.includes(roomId)) {
+            u.ws.send(JSON.stringify({ type: "user_count", count, roomId }));
+        }
+    });
 }
 
-wss.on('connection', function connection(ws, request) {
-  const url = request.url;
-  if (!url) {
-    return;
-  }
-  const queryParams = new URLSearchParams(url.split('?')[1]);
-  const token = queryParams.get('token') || "";
-  const userId = checkUser(token);
+wss.on("connection", (ws, request) => {
+    const queryParams = new URLSearchParams(request.url?.split("?")[1]);
+    const token = queryParams.get("token") || "";
+    const userId = checkUser(token);
 
-  if (userId == null) {
-    ws.close()
-    return null;
-  }
-
-  const user = {
-    userId,
-    rooms: [] as string[],
-    ws
-  };
-  
-  users.push(user);
-
-  ws.on('message', async function message(data) {
-    let parsedData;
-    if (typeof data !== "string") {
-      parsedData = JSON.parse(data.toString());
-    } else {
-      parsedData = JSON.parse(data); // {type: "join-room", roomId: 1}
+    if (!userId) {
+        ws.close();
+        return;
     }
 
-    if (parsedData.type === "join_room") {
-      const roomId = parsedData.roomId;
-      if (!user.rooms.includes(roomId)) {
-        user.rooms.push(roomId);
-        console.log(`User ${userId} joined room ${roomId}. Total users: ${getRoomUserCount(roomId)}`);
-        // Broadcast updated user count
-        broadcastUserCount(roomId);
-      }
-    }
+    const user: User = { userId, rooms: [], ws };
+    users.push(user);
 
-    if (parsedData.type === "leave_room") {
-      const roomId = parsedData.room;
-      if (user.rooms.includes(roomId)) {
-        user.rooms = user.rooms.filter(x => x !== roomId);
-        console.log(`User ${userId} left room ${roomId}. Total users: ${getRoomUserCount(roomId)}`);
-        broadcastUserCount(roomId);
-      }
-    }
+    ws.on("message", async (data) => {
+        const parsed = JSON.parse(data.toString());
 
-    console.log("message received")
-    console.log(parsedData);
-
-    if (parsedData.type === "chat") {
-      const roomIdOrSlug = parsedData.roomId;
-      const message = parsedData.message;
-      
-      console.log(`Broadcasting chat to room ${roomIdOrSlug}. User rooms:`, user.rooms);
-      console.log(`Total users in system:`, users.length);
-
-      // Try to find room by slug first, then by numeric ID
-      let room = await prismaClient.room.findUnique({
-        where: { slug: roomIdOrSlug }
-      });
-      
-      // If not found by slug, try by numeric ID
-      if (!room) {
-        const numericId = parseInt(roomIdOrSlug);
-        if (!isNaN(numericId)) {
-          room = await prismaClient.room.findUnique({
-            where: { id: numericId }
-          });
+        if (parsed.type === "join_room") {
+            const roomId = parsed.roomId;
+            if (!user.rooms.includes(roomId)) {
+                user.rooms.push(roomId);
+                broadcastUserCount(roomId);
+            }
         }
-      }
 
-      if (!room) {
-        console.error("Room not found by slug or ID:", roomIdOrSlug);
-        // Still broadcast even if DB lookup fails - collaboration should work
-      } else {
-        // Save to DB if room found
-        await prismaClient.chat.create({
-          data: {
-            roomId: room.id,
-            message,
-            userId
-          }
-        });
-      }
-
-      // ALWAYS broadcast to users in the room (by the ID they joined with)
-      let broadcastCount = 0;
-      users.forEach(u => {
-        console.log(`Checking user ${u.userId}, rooms:`, u.rooms, `includes ${roomIdOrSlug}?`, u.rooms.includes(roomIdOrSlug));
-        if (u.rooms.includes(roomIdOrSlug)) {
-          u.ws.send(JSON.stringify({
-            type: "chat",
-            message: message,
-            roomId: roomIdOrSlug
-          }));
-          broadcastCount++;
+        if (parsed.type === "leave_room") {
+            const roomId = parsed.room;
+            user.rooms = user.rooms.filter(r => r !== roomId);
+            broadcastUserCount(roomId);
         }
-      });
-      console.log(`Broadcast chat to ${broadcastCount} users in room ${roomIdOrSlug}`);
-    }
 
-  });
-  
-  // Handle disconnect - remove user from all rooms and broadcast
-  ws.on('close', () => {
-    console.log(`User ${userId} disconnected`);
-    // Get all rooms this user was in
-    const roomsToUpdate = [...user.rooms];
-    // Remove user from tracking
-    const index = users.findIndex(u => u.ws === ws);
-    if (index > -1) {
-      users.splice(index, 1);
-    }
-    // Broadcast updated counts for all rooms they were in
-    roomsToUpdate.forEach(roomId => {
-      broadcastUserCount(roomId);
+        if (parsed.type === "chat") {
+            const roomIdStr = parsed.roomId;
+            const message = parsed.message;
+
+            let room = await prismaClient.room.findUnique({ where: { slug: roomIdStr } });
+            if (!room && !isNaN(Number(roomIdStr))) {
+                room = await prismaClient.room.findUnique({ where: { id: Number(roomIdStr) } });
+            }
+
+            if (room) {
+                await prismaClient.chat.create({
+                    data: { roomId: room.id, message, userId }
+                });
+            }
+
+            users.forEach(u => {
+                if (u.rooms.includes(roomIdStr)) {
+                    u.ws.send(JSON.stringify({ type: "chat", message, roomId: roomIdStr }));
+                }
+            });
+        }
     });
-  });
 
+    ws.on("close", () => {
+        const roomsToUpdate = [...user.rooms];
+        const index = users.findIndex(u => u.ws === ws);
+        if (index > -1) users.splice(index, 1);
+        roomsToUpdate.forEach(r => broadcastUserCount(r));
+    });
 });
-
